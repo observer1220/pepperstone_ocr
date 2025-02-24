@@ -1,5 +1,6 @@
 denoise/
 frame/
 private/
+output_text/
 *.mp4
-
+*.xlsx
