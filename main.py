@@ -7,7 +7,38 @@ import re
 from pathlib import Path
 
 
-def preprocess_images(input_dir="frame", output_dir="denoise"):
+def getFrames(video_path, output_dir, fps_interval=1):
+    """將影片轉換為圖片，可指定每秒擷取頻率"""
+    # 確保輸出資料夾存在
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    # 讀取影片
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print("無法讀取影片")
+        return
+
+    # 取得影片fps和每秒擷取幀數
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_interval = int(fps / fps_interval)  # fps_interval=1 表示每秒1幀
+    frame_count = 0
+    saved_count = 0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        if frame_count % frame_interval == 0:
+            saved_count += 1
+            output_path = os.path.join(output_dir, f"{saved_count:04d}.jpg")
+            cv2.imwrite(output_path, frame)
+        frame_count += 1
+
+    cap.release()
+    print(f"已儲存 {saved_count} 張圖片")
+
+
+def preprocess_images(input_dir, output_dir):
     """將圖片轉換為灰度圖並儲存"""
     # 確保輸出資料夾存在
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -30,7 +61,7 @@ def preprocess_images(input_dir="frame", output_dir="denoise"):
             print(f"處理圖片 {img_path} 時發生錯誤: {e}")
 
 
-def extract_text(input_dir="denoise", output_file="output_text/output_text.txt"):
+def extract_text(input_dir, output_file):
     """使用OCR提取文字並儲存"""
     # 確保輸出資料夾存在
     output_dir = os.path.dirname(output_file)
@@ -53,8 +84,7 @@ def extract_text(input_dir="denoise", output_file="output_text/output_text.txt")
             print(f"OCR處理 {img_path} 時發生錯誤: {e}")
 
 
-def parse_text_to_excel(input_file="output_text/output_text.txt",
-                        output_excel="交易數據.xlsx"):
+def parse_text_to_excel(input_file, output_excel):
     """解析文字並轉換為Excel"""
     # 檢查輸入檔案是否存在
     if not os.path.exists(input_file):
@@ -119,14 +149,17 @@ def parse_text_to_excel(input_file="output_text/output_text.txt",
 def main():
     """主函數執行整個流程"""
     try:
+        print("開始處理影片...")
+        getFrames('pepperstone.mp4', 'frame', fps_interval=1)
+
         print("開始處理圖片...")
-        preprocess_images()
+        preprocess_images("frame", "denoise")
 
         print("開始提取文字...")
-        extract_text()
+        extract_text("denoise", "output_text/output_text.txt")
 
         print("開始解析並生成Excel...")
-        parse_text_to_excel()
+        parse_text_to_excel("output_text/output_text.txt", "trasaction.xlsx")
 
         print("處理完成！")
     except Exception as e:
